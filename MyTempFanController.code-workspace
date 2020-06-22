@@ -1,0 +1,14 @@
+{
+  "folders": [{
+    "name": "MyTempFanController",
+    "path": "."
+  }],
+  "settings": {
+    "editor.tabSize": 2,
+    "editor.insertSpaces": true,
+    "files.associations": {
+      "*.js": "javascriptreact",
+      "functional": "cpp"
+    }
+  }
+}
