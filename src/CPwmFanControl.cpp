@@ -1,4 +1,5 @@
 #include <CPwmFanControl.h>
+#include <limits>
 
 const double CPwmFanControl::PWM_FREQUENCY = 25000.0;
 const uint8_t CPwmFanControl::PWM_RESOUTION = 8;
@@ -6,8 +7,9 @@ const uint8_t CPwmFanControl::PWM_RESOUTION = 8;
 CPwmFanControl::CPwmFanControl(const uint8_t nPwmChannel,
                                const uint8_t nPinFanPwm,
                                const uint8_t nPinFanTach,
-                               const dutycycle_t nMinFanDutyCycle,
-                               const dutycycle_t nFanOffDutyCycle)
+                               const dutycycle_t nMinFanDutyCycle /* = 0.0*/,
+                               const dutycycle_t nFanOffDutyCycle /* = 0.0*/,
+                               const uint8_t bAllowOff /*= 1*/)
 {
   m_muxFanIrqCounter = portMUX_INITIALIZER_UNLOCKED;
 
@@ -16,6 +18,7 @@ CPwmFanControl::CPwmFanControl(const uint8_t nPwmChannel,
   m_nPinFanTach = nPinFanTach;
   m_nMinFanDutyCycle = nMinFanDutyCycle;
   m_nFanOffDutyCycle = nFanOffDutyCycle;
+  m_bAllowOff = bAllowOff;
 }
 
 void CPwmFanControl::setMinFanDutyCycle(const dutycycle_t nMinFanDutyCycle)
@@ -26,6 +29,11 @@ void CPwmFanControl::setMinFanDutyCycle(const dutycycle_t nMinFanDutyCycle)
 void CPwmFanControl::setFanOffDutyCycle(const dutycycle_t nFanOffDutyCycle)
 {
   m_nFanOffDutyCycle = nFanOffDutyCycle;
+}
+
+void CPwmFanControl::setAllowOff(const uint8_t bAllowOff)
+{
+  m_bAllowOff = bAllowOff;
 }
 
 void CPwmFanControl::begin(void (*pHandleFanTackIrq)())
@@ -68,6 +76,11 @@ void CPwmFanControl::setFanDutyCycle(const dutycycle_t nDutyCycle)
     nTmpDutyCycle = max(nTmpDutyCycle, m_nMinFanDutyCycle);
   }
 
+  if (!m_bAllowOff && nTmpDutyCycle <= 0)
+  {
+    nTmpDutyCycle = m_nMinFanDutyCycle;
+  }
+
   m_nLastDutyCycle = nTmpDutyCycle;
   ledcWrite(m_nPwmChannel, nTmpDutyCycle);
 }
@@ -102,21 +115,34 @@ uint32_t CPwmFanControl::getFanRpms()
   uint32_t nReturn = 0;
 
   uint32_t nPrevFanTackIrqCounter = 0;
-  uint32_t nPrevFanTackCounterLastReadMs = 0;
+  uint32_t nPrevFanTackCounterLastReadMicros = 0;
 
   portENTER_CRITICAL(&m_muxFanIrqCounter);
   {
     nPrevFanTackIrqCounter = m_nFanTackIrqCounter;
-    nPrevFanTackCounterLastReadMs = m_nFanTackCounterLastReadMs;
+    nPrevFanTackCounterLastReadMicros = m_nFanTackCounterLastReadMicros;
     m_nFanTackIrqCounter = 0;
-    m_nFanTackCounterLastReadMs = millis();
+    m_nFanTackCounterLastReadMicros = micros();
   }
   portEXIT_CRITICAL(&m_muxFanIrqCounter);
 
-  if ((nPrevFanTackIrqCounter > 0) && (nPrevFanTackCounterLastReadMs > 0))
+  if ((nPrevFanTackIrqCounter > 0) && (nPrevFanTackCounterLastReadMicros > 0))
   {
     double fNumFanRevs = ((double)nPrevFanTackIrqCounter) / 2.0;
-    double fFanTimeSec = ((double)m_nFanTackCounterLastReadMs - (double)nPrevFanTackCounterLastReadMs) / 1000.0;
+    double nNumMicros = 0;
+
+    // Handle rollover
+    if (nPrevFanTackCounterLastReadMicros > m_nFanTackCounterLastReadMicros)
+    {
+      nNumMicros = std::numeric_limits<double>::max() - nPrevFanTackCounterLastReadMicros + m_nFanTackCounterLastReadMicros;
+    }
+    else
+    {
+      nNumMicros = (double)m_nFanTackCounterLastReadMicros - (double)nPrevFanTackCounterLastReadMicros;
+    }
+
+    double fFanTimeSec = nNumMicros / 1000000.0;
+
     double fFanFreqHz = fNumFanRevs / fFanTimeSec;
     double fFanRpms = fFanFreqHz * 60.0;
     nReturn = round(fFanRpms);
