@@ -13,7 +13,8 @@ public:
                  const uint8_t nPinFanTach,
                  const dutycycle_t nMinFanDutyCycle = 0.0,
                  const dutycycle_t nFanOffDutyCycle = 0.0,
-                 const uint8_t bAllowOff = 1);
+                 const uint8_t bAllowOff = 1,
+                 const uint32_t nFanMinRuntimeMs = 30000);
 
   void begin(void (*pHandleFanTackIrq)());
 
@@ -22,6 +23,7 @@ public:
   void setMinFanDutyCycle(const dutycycle_t nMinFanDutyCycle);
   void setFanOffDutyCycle(const dutycycle_t nFanOffDutyCycle);
   void setAllowOff(const uint8_t bAllowOff);
+  void setFanMinRuntimeMs(uint32_t nFanMinRuntimeMs);
 
   void setFanDutyCycle(const dutycycle_t nDutyCycle);
   void setFanDutyCyclePercent(const double fDutyPercent);
@@ -31,10 +33,12 @@ public:
 
   double getLastDutyCyclePercent();
 
-  void
-  setFullSpeed();
+  void setFullSpeed();
 
   uint32_t getFanRpms();
+
+  uint32_t getRuntimeMs();
+  bool isMinRuntimeComplete();
 
   static uint8_t percentToDutyCycle(const double fDutyPercent);
   static double dutyCycleToPercent(const dutycycle_t nDutyCycle);
@@ -51,9 +55,11 @@ private:
   uint8_t m_nPinFanTach = 0;
   dutycycle_t m_nMinFanDutyCycle = 0;
   dutycycle_t m_nFanOffDutyCycle = 0;
-  uint8_t m_bAllowOff = 1;
+  uint8_t m_bFanAllowOff = 1;
+  uint32_t m_nFanMinRuntimeMs = 0;
   dutycycle_t m_nLastDutyCycle = 0;
   dutycycle_t m_nLastSpecDutyCycle = 0;
+  uint32_t m_nLastFanStartMs = 0;
 };
 
 #endif // #ifndef __CPWMFANCONTROL_H__

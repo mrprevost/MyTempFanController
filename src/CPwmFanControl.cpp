@@ -9,16 +9,17 @@ CPwmFanControl::CPwmFanControl(const uint8_t nPwmChannel,
                                const uint8_t nPinFanTach,
                                const dutycycle_t nMinFanDutyCycle /* = 0.0*/,
                                const dutycycle_t nFanOffDutyCycle /* = 0.0*/,
-                               const uint8_t bAllowOff /*= 1*/)
+                               const uint8_t bAllowOff /*= 1*/,
+                               const uint32_t nFanMinRuntimeMs /*= 30000*/) : m_muxFanIrqCounter(portMUX_INITIALIZER_UNLOCKED)
 {
-  m_muxFanIrqCounter = portMUX_INITIALIZER_UNLOCKED;
-
   m_nPwmChannel = nPwmChannel;
   m_nPinFanPwm = nPinFanPwm;
   m_nPinFanTach = nPinFanTach;
   m_nMinFanDutyCycle = nMinFanDutyCycle;
   m_nFanOffDutyCycle = nFanOffDutyCycle;
-  m_bAllowOff = bAllowOff;
+  m_bFanAllowOff = bAllowOff;
+  m_nFanMinRuntimeMs = nFanMinRuntimeMs;
+  m_nLastFanStartMs = millis();
 }
 
 void CPwmFanControl::setMinFanDutyCycle(const dutycycle_t nMinFanDutyCycle)
@@ -33,7 +34,12 @@ void CPwmFanControl::setFanOffDutyCycle(const dutycycle_t nFanOffDutyCycle)
 
 void CPwmFanControl::setAllowOff(const uint8_t bAllowOff)
 {
-  m_bAllowOff = bAllowOff;
+  m_bFanAllowOff = bAllowOff;
+}
+
+void CPwmFanControl::setFanMinRuntimeMs(uint32_t nFanMinRuntimeMs)
+{
+  m_nFanMinRuntimeMs = nFanMinRuntimeMs;
 }
 
 void CPwmFanControl::begin(void (*pHandleFanTackIrq)())
@@ -67,6 +73,7 @@ void CPwmFanControl::setFanDutyCycle(const dutycycle_t nDutyCycle)
   m_nLastSpecDutyCycle = nDutyCycle;
 
   uint8_t nTmpDutyCycle = nDutyCycle;
+
   if (nTmpDutyCycle <= m_nFanOffDutyCycle)
   {
     nTmpDutyCycle = 0;
@@ -76,13 +83,55 @@ void CPwmFanControl::setFanDutyCycle(const dutycycle_t nDutyCycle)
     nTmpDutyCycle = max(nTmpDutyCycle, m_nMinFanDutyCycle);
   }
 
-  if (!m_bAllowOff && nTmpDutyCycle <= 0)
+  // if we arent allowing the fan to turn off, set to min duty cycle
+  if (nTmpDutyCycle <= 0 && !m_bFanAllowOff)
   {
     nTmpDutyCycle = m_nMinFanDutyCycle;
   }
 
+  // if min fan runtime is set and runtime is not complete, set to min duty cycle
+  if ((m_nFanMinRuntimeMs > 0) && (nTmpDutyCycle <= 0) && !isMinRuntimeComplete())
+  {
+    nTmpDutyCycle = m_nMinFanDutyCycle;
+  }
+
+  // If we go from zero to nonzero duty cycle, start the runtime timer
+  if ((m_nLastDutyCycle <= 0) && (nTmpDutyCycle > 0))
+  {
+    m_nLastFanStartMs = millis();
+  }
+
   m_nLastDutyCycle = nTmpDutyCycle;
   ledcWrite(m_nPwmChannel, nTmpDutyCycle);
+}
+
+uint32_t CPwmFanControl::getRuntimeMs()
+{
+  uint32_t nReturn = 0;
+
+  uint32_t nNowMs = millis();
+  if (m_nLastFanStartMs < nNowMs)
+  {
+    nReturn = nNowMs - m_nLastFanStartMs;
+  }
+  else // handle rollover
+  {
+    nReturn = std::numeric_limits<uint32_t>::max() - m_nLastFanStartMs + nNowMs;
+  }
+
+  return nReturn;
+}
+
+bool CPwmFanControl::isMinRuntimeComplete()
+{
+  bool bReturn = true;
+
+  if (m_nFanMinRuntimeMs > 0)
+  {
+    bReturn = (getRuntimeMs() >= m_nFanMinRuntimeMs);
+  }
+
+  return bReturn;
 }
 
 void CPwmFanControl::setFanDutyCyclePercent(const double fDutyPercent)
