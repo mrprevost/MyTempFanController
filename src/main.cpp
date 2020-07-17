@@ -23,7 +23,7 @@
 
 typedef struct FanSettings
 {
-  double fPidSetpoint = 90.0;
+  double fPidSetpoint = 85.0;
   double fPidKp = 4.0; //2.0;
   double fPidKi = 2.0; //5.0;
   double fPidKd = 1.0; //1.0;
@@ -31,7 +31,7 @@ typedef struct FanSettings
   double fMinFanDutyCyclePercent = 30.0;
   double fFanOffDutyCyclePercent = 0.00;
   uint8_t bAllowOff = 1;
-  uint64_t nFanMinRuntimeMs = 30000;
+  uint32_t nFanMinRuntimeMs = 0;
 } FanSettings;
 
 typedef struct PersistentSettings
@@ -147,8 +147,8 @@ void setup()
 
   //EEPROM.begin(sizeof(PersistentSettings));
   //EEPROM.get(0, persistentSettings);
-  // EEPROM.put(0, persistentSettings);
-  // EEPROM.commit();
+  //EEPROM.put(0, persistentSettings);
+  //EEPROM.commit();
 
   // initialize temp sensors and fan controllers
   tempSensors.begin();
@@ -169,6 +169,10 @@ void setup()
   );
 
   // START FAN #1 CONTROL TASK
+  // persistentSettings.fan1.fPidSetpoint = 90.0;
+  // persistentSettings.fan1.fFullSpeedTemp = 100.0;
+  // persistentSettings.fan1.bAllowOff = 0;
+
   settingsFan1.pFanSettings = &persistentSettings.fan1;
   settingsFan1.pFanCtrl = &fan1Ctrl;
   settingsFan1.pTempSensors = &tempSensors;
@@ -188,6 +192,7 @@ void setup()
   // START FAN #2 CONTROL TASK
   // persistentSettings.fan2.fPidSetpoint = 75.0;
   // persistentSettings.fan2.fFullSpeedTemp = 85.0;
+  // persistentSettings.fan2.bAllowOff = 1;
 
   settingsFan2.pFanSettings = &persistentSettings.fan2;
   settingsFan2.pFanCtrl = &fan2Ctrl;
@@ -219,25 +224,20 @@ void setup()
     server.begin(arrFanCtrl, 2, &tempSensors);
   }
 
-  setupOTA("MyFanController2");
+  setupOTA("MyFanController1");
 
   delay(1000);
 }
 
 void loop()
 {
-  //vTaskDelete(NULL);
   MySerial.printf("\n### LOOP\n");
   MySerial.printf("Sensors: { %02.3fF, %02.3fF } Max %02.3fF\n", tempSensors.getTempF(0), tempSensors.getTempF(1), tempSensors.getMaxTempF());
   MySerial.printf("Fan1: %4d RPMs, %6.3f%% (%6.3f%%), %6.3fF / %6.3fF rt=%u\n", fan1Ctrl.getFanRpms(), fan1Ctrl.getLastDutyCyclePercent(), CPwmFanControl::dutyCycleToPercent(fan1Ctrl.getLastSpecDutyCycle()), tempSensors.getMaxTempF(), persistentSettings.fan1.fPidSetpoint, fan1Ctrl.getRuntimeMs());
   MySerial.printf("Fan2: %4d RPMs, %6.3f%% (%6.3f%%), %6.3fF / %6.3fF\n", fan2Ctrl.getFanRpms(), fan2Ctrl.getLastDutyCyclePercent(), CPwmFanControl::dutyCycleToPercent(fan2Ctrl.getLastSpecDutyCycle()), tempSensors.getTempF(1), persistentSettings.fan2.fPidSetpoint);
-
-  // Serial.printf("persistentSettings.fan1.fPidSetpoint = %02.2f\n", persistentSettings.fan1.fPidSetpoint);
-  // Serial.printf("persistentSettings.fan1.fFullSpeedTemp = %02.2f\n", persistentSettings.fan1.fFullSpeedTemp);
-  // Serial.printf("persistentSettings.fan1.fMinFanDutyCyclePercent = %02.2f\n", persistentSettings.fan1.fMinFanDutyCyclePercent);
-  //MySerial.printf("fan1Ctrl.getLastDutyCycle() = %d (%d)\n", fan1Ctrl.getLastDutyCycle(), fan1Ctrl.getLastSpecDutyCycle());
-  //MySerial.printf("fan2Ctrl.getLastDutyCycle() = %d (%d)\n", fan2Ctrl.getLastDutyCycle(), fan2Ctrl.getLastSpecDutyCycle());
-
   MySerial.printf("\n");
+
+  fan1Ctrl.getFanRpms();
+  fan2Ctrl.getFanRpms();
   delay(1000);
 }
