@@ -9,6 +9,8 @@
 #include <MyOTA.h>
 #include "private.h"
 
+#define TEMP_SENSOR_PIN 15
+
 #define FAN1_PWM_CHANNEL 0
 #define FAN1_PWM_PIN 16
 #define FAN1_TACH_PIN 17
@@ -16,8 +18,6 @@
 #define FAN2_PWM_CHANNEL 1
 #define FAN2_PWM_PIN 18
 #define FAN2_TACH_PIN 19
-
-#define TEMP_SENSOR_PIN 15
 
 #define NON_WIFI_CORE 1
 
