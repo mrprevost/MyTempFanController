@@ -202,6 +202,7 @@ void setup()
   persistentSettings.fan1.fPidSetpoint = 100.0;
   persistentSettings.fan1.fFullSpeedTemp = 105.0;
   persistentSettings.fan1.bAllowOff = 1;
+  persistentSettings.fan1.nFanMinRuntimeMs = 60000;  
 
   settingsFan1.pFanSettings = &persistentSettings.fan1;
   settingsFan1.pFanCtrl = &fan1Ctrl;
@@ -219,10 +220,11 @@ void setup()
       NON_WIFI_CORE                     // Core you want to run the task on (0 or 1)
   );
 
-  // START FAN #2 CONTROL TASK
+  // START FAN #2 CONTROL TASKvf 
   persistentSettings.fan2.fPidSetpoint = 100.0;
   persistentSettings.fan2.fFullSpeedTemp = 105.0;
   persistentSettings.fan2.bAllowOff = 1;
+  persistentSettings.fan2.nFanMinRuntimeMs = 60000;  
 
   settingsFan2.pFanSettings = &persistentSettings.fan2;
   settingsFan2.pFanCtrl = &fan2Ctrl;
