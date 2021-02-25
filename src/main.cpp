@@ -140,6 +140,41 @@ void taskTempUpdate(void *pvParam)
   vTaskDelete(NULL);
 }
 
+void onWifiDisconnected(WiFiEvent_t event, WiFiEventInfo_t info)
+{
+  MySerial.printf("WiFi lost connection. Reason: %d\n", info.disconnected.reason);
+  while (!WiFi.isConnected())
+  {
+    MySerial.println("Reconnecting...");
+    WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+    if (WiFi.waitForConnectResult() != WL_CONNECTED)
+    {
+      delay(3000);
+    }
+  }
+}
+
+boolean startWifi()
+{
+  boolean bReturn = false;
+
+  // CONNECT TO WIFI
+  WiFi.onEvent(onWifiDisconnected, SYSTEM_EVENT_STA_DISCONNECTED);
+  WiFi.mode(WIFI_STA);
+
+  while (!WiFi.isConnected())
+  {
+    WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+    bReturn = (WiFi.waitForConnectResult() != WL_CONNECTED);
+    if (!bReturn)
+    {
+      delay(3000);
+    }
+  }
+
+  return bReturn;
+}
+
 void setup()
 {
   Serial.begin(115200);
@@ -211,20 +246,13 @@ void setup()
   );
 
   // CONNECT TO WIFI
-  WiFi.mode(WIFI_STA);
-  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-  if (WiFi.waitForConnectResult() != WL_CONNECTED)
-  {
-    Serial.printf("WiFi Failed!\n");
-  }
-  else
+  if (startWifi())
   {
     CPwmFanControl *arrFanCtrl[] = {&fan1Ctrl, &fan2Ctrl};
-
     server.begin(arrFanCtrl, 2, &tempSensors);
   }
 
-  setupOTA("MyFanController1");
+  setupOTA("MyFanController2");
 
   delay(1000);
 }
@@ -232,6 +260,14 @@ void setup()
 void loop()
 {
   MySerial.printf("\n### LOOP\n");
+  if (WiFi.isConnected())
+  {
+    MySerial.printf("WiFi strength: %d, IP: %s\n", WiFi.RSSI(), WiFi.localIP().toString().c_str());
+  }
+  else
+  {
+    MySerial.printf("WiFi NOT CONNECTED!\n");
+  }
   MySerial.printf("Sensors: { %02.3fF, %02.3fF } Max %02.3fF\n", tempSensors.getTempF(0), tempSensors.getTempF(1), tempSensors.getMaxTempF());
   MySerial.printf("Fan1: %4d RPMs, %6.3f%% (%6.3f%%), %6.3fF / %6.3fF rt=%u\n", fan1Ctrl.getFanRpms(), fan1Ctrl.getLastDutyCyclePercent(), CPwmFanControl::dutyCycleToPercent(fan1Ctrl.getLastSpecDutyCycle()), tempSensors.getMaxTempF(), persistentSettings.fan1.fPidSetpoint, fan1Ctrl.getRuntimeMs());
   MySerial.printf("Fan2: %4d RPMs, %6.3f%% (%6.3f%%), %6.3fF / %6.3fF\n", fan2Ctrl.getFanRpms(), fan2Ctrl.getLastDutyCyclePercent(), CPwmFanControl::dutyCycleToPercent(fan2Ctrl.getLastSpecDutyCycle()), tempSensors.getTempF(1), persistentSettings.fan2.fPidSetpoint);
