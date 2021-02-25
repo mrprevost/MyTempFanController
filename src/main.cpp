@@ -154,10 +154,8 @@ void onWifiDisconnected(WiFiEvent_t event, WiFiEventInfo_t info)
   }
 }
 
-boolean startWifi()
+void startWifi()
 {
-  boolean bReturn = false;
-
   // CONNECT TO WIFI
   WiFi.onEvent(onWifiDisconnected, SYSTEM_EVENT_STA_DISCONNECTED);
   WiFi.mode(WIFI_STA);
@@ -165,14 +163,11 @@ boolean startWifi()
   while (!WiFi.isConnected())
   {
     WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-    bReturn = (WiFi.waitForConnectResult() != WL_CONNECTED);
-    if (!bReturn)
+    if (WiFi.waitForConnectResult() != WL_CONNECTED)
     {
       delay(3000);
     }
   }
-
-  return bReturn;
 }
 
 void setup()
@@ -204,8 +199,8 @@ void setup()
   );
 
   // START FAN #1 CONTROL TASK
-  persistentSettings.fan1.fPidSetpoint = 122.0;
-  persistentSettings.fan1.fFullSpeedTemp = 125.0;
+  persistentSettings.fan1.fPidSetpoint = 100.0;
+  persistentSettings.fan1.fFullSpeedTemp = 105.0;
   persistentSettings.fan1.bAllowOff = 1;
 
   settingsFan1.pFanSettings = &persistentSettings.fan1;
@@ -225,8 +220,8 @@ void setup()
   );
 
   // START FAN #2 CONTROL TASK
-  persistentSettings.fan2.fPidSetpoint = 122.0;
-  persistentSettings.fan2.fFullSpeedTemp = 125.0;
+  persistentSettings.fan2.fPidSetpoint = 100.0;
+  persistentSettings.fan2.fFullSpeedTemp = 105.0;
   persistentSettings.fan2.bAllowOff = 1;
 
   settingsFan2.pFanSettings = &persistentSettings.fan2;
@@ -246,13 +241,11 @@ void setup()
   );
 
   // CONNECT TO WIFI
-  if (startWifi())
-  {
-    CPwmFanControl *arrFanCtrl[] = {&fan1Ctrl, &fan2Ctrl};
-    server.begin(arrFanCtrl, 2, &tempSensors);
-  }
+  startWifi();
+  CPwmFanControl *arrFanCtrl[] = {&fan1Ctrl, &fan2Ctrl};
+  server.begin(arrFanCtrl, 2, &tempSensors);
 
-  setupOTA("MyFanController2");
+  setupOTA("MyFanController1");
 
   delay(1000);
 }
