@@ -199,8 +199,8 @@ void setup()
   );
 
   // START FAN #1 CONTROL TASK
-  persistentSettings.fan1.fPidSetpoint = 100.0;
-  persistentSettings.fan1.fFullSpeedTemp = 105.0;
+  persistentSettings.fan1.fPidSetpoint = 105.0;
+  persistentSettings.fan1.fFullSpeedTemp = 110.0;
   persistentSettings.fan1.bAllowOff = 1;
   persistentSettings.fan1.nFanMinRuntimeMs = 60000;  
 
@@ -221,8 +221,8 @@ void setup()
   );
 
   // START FAN #2 CONTROL TASKvf 
-  persistentSettings.fan2.fPidSetpoint = 100.0;
-  persistentSettings.fan2.fFullSpeedTemp = 105.0;
+  persistentSettings.fan2.fPidSetpoint = 105.0;
+  persistentSettings.fan2.fFullSpeedTemp = 110.0;
   persistentSettings.fan2.bAllowOff = 1;
   persistentSettings.fan2.nFanMinRuntimeMs = 60000;  
 
