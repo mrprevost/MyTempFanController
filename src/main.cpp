@@ -140,32 +140,31 @@ void taskTempUpdate(void *pvParam)
   vTaskDelete(NULL);
 }
 
-void onWifiDisconnected(WiFiEvent_t event, WiFiEventInfo_t info)
-{
-  MySerial.printf("WiFi lost connection. Reason: %d\n", info.disconnected.reason);
-  while (!WiFi.isConnected())
-  {
-    MySerial.println("Reconnecting...");
-    WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-    if (WiFi.waitForConnectResult() != WL_CONNECTED)
-    {
-      delay(3000);
-    }
-  }
-}
+void startWifi();
+
+// void onWifiDisconnected(WiFiEvent_t event, WiFiEventInfo_t info)
+// {
+//   Serial.println("onWifiDisconnected()...\n");
+// }
 
 void startWifi()
 {
-  // CONNECT TO WIFI
-  WiFi.onEvent(onWifiDisconnected, SYSTEM_EVENT_STA_DISCONNECTED);
-  WiFi.mode(WIFI_STA);
-
-  while (!WiFi.isConnected())
+  Serial.println("startWifi()...\n");
+  if (!WiFi.isConnected())
   {
-    WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-    if (WiFi.waitForConnectResult() != WL_CONNECTED)
+    Serial.println("startWifi(): not connected...\n");
+    //WiFi.onEvent(onWifiDisconnected, SYSTEM_EVENT_STA_DISCONNECTED);
+    WiFi.mode(WIFI_STA);
+
+    while (!WiFi.isConnected())
     {
-      delay(3000);
+      Serial.println("startWifi(): trying to connect...\n");
+      WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+      if (WiFi.waitForConnectResult() != WL_CONNECTED)
+      {
+        Serial.println("startWifi(): failed, retrying...\n");
+        delay(3000);
+      }
     }
   }
 }
@@ -202,7 +201,7 @@ void setup()
   persistentSettings.fan1.fPidSetpoint = 105.0;
   persistentSettings.fan1.fFullSpeedTemp = 110.0;
   persistentSettings.fan1.bAllowOff = 1;
-  persistentSettings.fan1.nFanMinRuntimeMs = 60000;  
+  persistentSettings.fan1.nFanMinRuntimeMs = 60000;
 
   settingsFan1.pFanSettings = &persistentSettings.fan1;
   settingsFan1.pFanCtrl = &fan1Ctrl;
@@ -220,11 +219,11 @@ void setup()
       NON_WIFI_CORE                     // Core you want to run the task on (0 or 1)
   );
 
-  // START FAN #2 CONTROL TASKvf 
+  // START FAN #2 CONTROL TASKvf
   persistentSettings.fan2.fPidSetpoint = 105.0;
   persistentSettings.fan2.fFullSpeedTemp = 110.0;
   persistentSettings.fan2.bAllowOff = 1;
-  persistentSettings.fan2.nFanMinRuntimeMs = 60000;  
+  persistentSettings.fan2.nFanMinRuntimeMs = 60000;
 
   settingsFan2.pFanSettings = &persistentSettings.fan2;
   settingsFan2.pFanCtrl = &fan2Ctrl;
@@ -243,10 +242,16 @@ void setup()
   );
 
   // CONNECT TO WIFI
+  Serial.printf("Connecting to WiFi...\n");
   startWifi();
-  CPwmFanControl *arrFanCtrl[] = {&fan1Ctrl, &fan2Ctrl};
-  server.begin(arrFanCtrl, 2, &tempSensors);
 
+  if (WiFi.isConnected())
+  {
+    CPwmFanControl *arrFanCtrl[] = {&fan1Ctrl, &fan2Ctrl};
+    server.begin(arrFanCtrl, 2, &tempSensors);
+  }
+
+  Serial.printf("Setting up OTA...\n");
   setupOTA("MyFanController1");
 
   delay(1000);
@@ -254,8 +259,21 @@ void setup()
 
 void loop()
 {
+  if (!WiFi.isConnected())
+  {
+    Serial.println("loop(): not connected...");
+    WiFi.disconnect();
+    WiFi.reconnect();
+    if (WiFi.waitForConnectResult() != WL_CONNECTED)
+    {
+      Serial.println("loop(): wifi connect failed...\n");
+      delay(3000);
+    }
+  }
+
+
   MySerial.printf("\n### LOOP\n");
-  if (WiFi.isConnected())
+   if (WiFi.isConnected())
   {
     MySerial.printf("WiFi strength: %d, IP: %s\n", WiFi.RSSI(), WiFi.localIP().toString().c_str());
   }
